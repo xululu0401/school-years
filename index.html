@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>入学年份表</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif; background: #f4f1ea; color: #2a2622; line-height: 1.6; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 20px 14px 40px; }
+  h1 { font-size: 26px; letter-spacing: 1px; }
+  .lead { color: #6a6258; font-size: 14px; margin: 4px 0 14px; }
+  .card { background: #fffdf8; border-radius: 10px; padding: 14px; border: 1px solid #e3dccf; margin-bottom: 14px; min-width: 0; }
+  .card h2 { font-size: 15px; font-weight: 600; margin-bottom: 8px; overflow-wrap: anywhere; }
+  .top { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 14px; align-items: start; }
+  label { font-size: 12px; color: #776e62; display: block; overflow-wrap: anywhere; }
+  input, textarea { font: inherit; font-size: 14px; padding: 6px 8px; border: 1px solid #c9bfae; border-radius: 6px; width: 100%; min-width: 0; background: #fff; font-variant-numeric: tabular-nums; }
+  textarea { resize: vertical; min-height: 80px; line-height: 1.55; font-family: ui-monospace, Menlo, "PingFang SC", monospace; }
+  .g2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
+  .row { margin-top: 10px; }
+  .bad { border-color: #b3412f !important; background: #fff0ec !important; }
+  button { font: inherit; font-size: 13px; padding: 6px 11px; border-radius: 6px; border: 1px solid #7a4a1f; background: #7a4a1f; color: #fff; cursor: pointer; }
+  button.ghost { background: #fff; color: #7a4a1f; }
+  .presets, .dl { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+  .err { display: none; background: #fff0ec; border: 1px solid #ecb7aa; color: #8e2b1c; border-radius: 8px; padding: 10px 12px; margin-bottom: 14px; overflow-wrap: anywhere; }
+  .muted { color: #877e72; font-size: 12px; }
+  #summary { font-size: 18px; font-weight: 700; overflow-wrap: anywhere; }
+  #facts { margin: 8px 0 0 18px; font-size: 14px; } #facts li { margin: 3px 0; overflow-wrap: anywhere; }
+  /* 出生窗口条 */
+  .win { margin-top: 8px; }
+  .win .bar { position: relative; height: 26px; background: linear-gradient(90deg, #efe6d6, #e6d3b3); border-radius: 5px; margin: 4px 0 2px; }
+  .win .pin { position: absolute; top: -3px; width: 3px; height: 32px; background: #7a4a1f; }
+  .win .cap { display: flex; justify-content: space-between; font-size: 11px; color: #877e72; gap: 8px; }
+  .win .who { font-size: 13px; overflow-wrap: anywhere; }
+  /* 年表 */
+  .tw { overflow-x: auto; }
+  table.yt { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 420px; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .yt th, .yt td { padding: 4px 6px; border-bottom: 1px solid #eee6d8; text-align: left; white-space: nowrap; }
+  .yt th { font-size: 12px; color: #776e62; font-weight: 600; position: sticky; top: 0; background: #fffdf8; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+  .yt td.c { border-radius: 4px; }
+  .yt td.c.st { font-weight: 700; box-shadow: inset 3px 0 0 #2a2622; }
+  .yt td.tot { text-align: right; font-weight: 600; }
+  .yt tr.peak td.tot { color: #a3321f; }
+  .yt tr.clash td.y::after { content: " ⚑"; color: #a3321f; }
+  .yt tr.multi td.tot { background: #fbeee4; }
+  .yt td.y { font-weight: 600; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 12px; color: #6a6258; margin-top: 8px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 4px; }
+  #sugs { display: grid; gap: 8px; }
+  .sug { display: flex; gap: 10px; align-items: center; justify-content: space-between; border: 1px solid #e3dccf; border-radius: 6px; padding: 8px 10px; }
+  .sug span { min-width: 0; overflow-wrap: anywhere; font-size: 14px; } .sug button { flex: none; }
+  .how { font-size: 13px; } .how p { margin: 6px 0; }
+  @media (max-width: 760px) { .top { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 480px) { .sug { flex-direction: column; align-items: stretch; } #summary { font-size: 16px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>入学年份表</h1>
+  <p class="lead">托班、幼儿园、小学都按「某天之前满几周岁」收人，早一天晚一天出生就差一整届。把孩子的出生日期、当地的截止日和各阶段几岁入学、读几年、每年大概花多少填进来，这里排出每个孩子哪年上什么、入学时几岁、在同届里算大还是算小，再按学年列出几个孩子同时在读什么、哪一年同时交几份钱、哪一年两个孩子同年升学。截止日和阶段要照当地公布的填；默认例子是虚构的。</p>
+
+  <div class="top">
+    <div class="card">
+      <h2>孩子和规则</h2>
+      <label for="kids">每行一个孩子：名字 出生日期 [缓读几年]</label>
+      <textarea id="kids" maxlength="300" spellcheck="false"></textarea>
+      <div class="g2 row">
+        <div><label for="cutoff">入学年龄截止日（月-日，含当天满岁就算）</label><input id="cutoff" maxlength="6"></div>
+        <div><label for="start">开学日（月-日，用来算入学时几岁）</label><input id="start" maxlength="6"></div>
+      </div>
+      <div class="row">
+        <label for="stages">阶段表：阶段 入学年龄(或「接」= 上一阶段读完就上) 读几年 [每年费用 元]</label>
+        <textarea id="stages" maxlength="500" spellcheck="false" style="min-height:150px"></textarea>
+      </div>
+      <div class="presets" id="presets"></div>
+    </div>
+    <div>
+      <div class="err" id="error"></div>
+      <div id="out">
+        <div class="card">
+          <div id="summary"></div>
+          <ul id="facts"></ul>
+        </div>
+        <div class="card">
+          <h2>在同一届里排在哪儿（按截止日划的一届，不含缓读）</h2>
+          <div id="wins"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="out2">
+    <div class="card">
+      <h2>逐学年年表（学年从开学那年算，比如 2030 学年 = 2030 年秋到 2031 年夏）</h2>
+      <div class="tw"><table class="yt" id="yt"></table></div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="card" id="sugCard">
+      <h2>改一个条件（点一下代回重算）</h2>
+      <div id="sugs"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>带走结果</h2>
+    <div class="dl">
+      <button id="dlCSV">CSV 年表</button><button id="dlMD">Markdown 摘要</button><button id="dlPNG">结果卡 PNG</button><button id="dlJSON" class="ghost">JSON 备份</button>
+      <button id="reset" class="ghost">恢复默认</button>
+    </div>
+    <p class="muted" style="margin-top:6px">输入自动保存在这台设备的浏览器里，刷新还在。</p>
+  </div>
+
+  <div class="card how">
+    <h2>怎么算的</h2>
+    <p><b>哪年入学</b>：要在入学那年的截止日当天或之前满 N 周岁。生日不晚于截止日（月-日比较），就是 出生年 + N；晚于截止日，再加一年。写了缓读几年，这个孩子所有按年龄入学的阶段都往后推几年。写「接」的阶段在上一阶段读完的那年秋天开始。</p>
+    <p><b>入学时几岁</b>：从出生日到那一年的开学日，按整月算。</p>
+    <p><b>同一届</b>：生日落在「上一年截止日的第二天」到「今年截止日」之间的孩子是同一届；截止日后第一天出生的最大，截止日当天出生的最小。</p>
+    <p><b>每学年多少钱</b>：每个孩子这一学年所在阶段的「每年费用」相加；按你填的数，不含物价上涨。</p>
+    <p class="muted">这里不内置任何地区的入学政策，截止日和各阶段年龄以当地教育部门公布为准；不处理提前入学、学区与名额、跳级留级、学年中途转入。默认例子是虚构的。</p>
+  </div>
+</div>
+
+  <script>
+/* 入学年份表 · 计算核心
+ * 输入：几个孩子（名字 出生日期 [缓读几年]）、入学年龄截止日（月-日，含当天）、学年从哪天开始（月-日）、
+ *       阶段表（阶段 入学年龄|接 读几年 [每年费用]）。
+ * 1. 按年龄入学的阶段：学年 Y 能入学 ⇔ 在 Y 年截止日当天或之前满 a 周岁 ⇔ 出生月日 ≤ 截止月日 时 Y = 出生年 + a，否则 + a + 1。
+ *    再加上这个孩子的缓读年数。写「接」的阶段紧接上一阶段结束那年开始。
+ * 2. 入学时几岁几个月：从出生日到那一学年开学日，按整月数。
+ * 3. 同届：按龄入学的同一届，出生日落在「上一年截止日次日 → 今年截止日」之间；算这个孩子比同届最小的大几个月。
+ * 4. 逐学年：每个孩子在读什么、几年级、这一学年各交多少；几个孩子同时交钱的学年、最贵的学年、同一年里两个孩子都要升学的学年。
+ * 5. 建议（可代回）：某个孩子缓读一年后最贵学年 / 同年升学次数怎么变；不读第一个阶段省多少。
+ * 不做：任何地区的真实入学政策（截止日与阶段由你填）、学区与招生名额、学费真实数字、提前入学。默认例子是虚构的。 */
+(function (root) {
+  'use strict';
+  function Bad(message, field) { const e = new Error(message); e.field = field; return e; }
+  const KEYS = ['kids', 'cutoff', 'start', 'stages'];
+  const MAX_KIDS = 6, MAX_STAGES = 10, MAX_SPAN = 80;
+  const DIM = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  const tidy = (s) => String(s).replace(/(\d),(?=\d{3}(\D|$))/g, '$1').replace(/[，,；;、\t　]/g, ' ').replace(/\s+/g, ' ').trim();
+  const isLeap = (y) => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+  const dayNo = (y, m, d) => Math.round(Date.UTC(y, m - 1, d) / 86400000);
+  const pad = (n) => String(n).padStart(2, '0');
+  const ymd = (y, m, d) => y + '-' + pad(m) + '-' + pad(d);
+  const money = (v) => String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  const yuan = (v) => money(v) + ' 元';
+
+  function md(t, field, what) {
+    const m = /^(\d{1,2})[-/.月](\d{1,2})日?$/.exec(tidy(t));
+    if (!m) throw Bad(what + '要写成 月-日，例如 08-31', field);
+    const mo = +m[1], d = +m[2];
+    if (mo < 1 || mo > 12 || d < 1 || d > DIM[mo - 1]) throw Bad(what + '「' + tidy(t) + '」不是有效日期', field);
+    if (mo === 2 && d === 29) throw Bad(what + '不能写 2 月 29 日（平年没有这一天）', field);
+    return { m: mo, d };
+  }
+  function parse(inp) {
+    if (!inp || typeof inp !== 'object') throw Bad('没有输入', 'kids');
+    for (const k of KEYS) if (typeof inp[k] !== 'string') throw Bad('缺少输入：' + k, k);
+    const cutoff = md(inp.cutoff, 'cutoff', '截止日');
+    const start = md(inp.start, 'start', '开学日');
+    /* 孩子 */
+    const kids = [], names = {};
+    const kl = inp.kids.split('\n').map(tidy).filter(Boolean).filter((l) => !/^(名字|孩子|姓名)(\s|$)/.test(l));
+    if (!kl.length) throw Bad('至少写一个孩子：名字 出生日期，例如「老大 2024-08-20」', 'kids');
+    if (kl.length > MAX_KIDS) throw Bad('孩子最多 ' + MAX_KIDS + ' 个', 'kids');
+    kl.forEach((l, i) => {
+      const p = l.split(' ');
+      if (p.length < 2 || p.length > 3) throw Bad('第 ' + (i + 1) + ' 个孩子要写成：名字 出生日期 [缓读几年]', 'kids');
+      const name = p[0].slice(0, 12);
+      if (names[name]) throw Bad('孩子名字「' + name + '」重复了', 'kids');
+      names[name] = 1;
+      const m = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/.exec(p[1]);
+      if (!m) throw Bad(name + ' 的出生日期要写成 年-月-日，例如 2024-08-20', 'kids');
+      const y = +m[1], mo = +m[2], d = +m[3];
+      if (y < 1990 || y > 2100) throw Bad(name + ' 的出生年份要在 1990 到 2100 之间', 'kids');
+      if (mo < 1 || mo > 12 || d < 1 || d > DIM[mo - 1] || (mo === 2 && d === 29 && !isLeap(y))) throw Bad(name + ' 的出生日期「' + p[1] + '」不存在', 'kids');
+      let delay = 0;
+      if (p.length === 3) {
+        if (!/^[0-3]$/.test(p[2])) throw Bad(name + ' 的缓读年数要写 0 到 3 的整数', 'kids');
+        delay = +p[2];
+      }
+      kids.push({ name, y, m: mo, d, delay, raw: l });
+    });
+    /* 阶段 */
+    const sl = inp.stages.split('\n').map(tidy).filter(Boolean).filter((l) => !/^阶段(\s|$)/.test(l));
+    if (!sl.length) throw Bad('至少写一个阶段：阶段 入学年龄 读几年 [每年费用]', 'stages');
+    if (sl.length > MAX_STAGES) throw Bad('阶段最多 ' + MAX_STAGES + ' 个', 'stages');
+    const stages = [];
+    sl.forEach((l, i) => {
+      const p = l.split(' ');
+      if (p.length < 3 || p.length > 4) throw Bad('阶段第 ' + (i + 1) + ' 行要写成：阶段 入学年龄(或「接」) 读几年 [每年费用]', 'stages');
+      const name = p[0].slice(0, 10);
+      if (stages.some((s) => s.name === name)) throw Bad('阶段「' + name + '」重复了', 'stages');
+      let age = null;
+      if (p[1] === '接' || p[1] === '-') { if (!i) throw Bad('第一个阶段要写入学年龄，不能写「接」', 'stages'); }
+      else if (/^\d{1,2}$/.test(p[1]) && +p[1] <= 25) age = +p[1];
+      else throw Bad('「' + name + '」的入学年龄要写 0 到 25 的整数，或写「接」表示紧接上一阶段', 'stages');
+      if (!/^\d{1,2}$/.test(p[2]) || +p[2] < 1 || +p[2] > 12) throw Bad('「' + name + '」读几年要写 1 到 12 的整数', 'stages');
+      let fee = 0;
+      if (p.length === 4) {
+        if (!/^\d{1,7}$/.test(p[3].replace(/,/g, ''))) throw Bad('「' + name + '」的每年费用要写 0 到 9999999 的整数（元）', 'stages');
+        fee = +p[3].replace(/,/g, '');
+      }
+      stages.push({ name, age, years: +p[2], fee });
+    });
+    return { cutoff, start, kids, stages };
+  }
+
+  /* 一个孩子的全部阶段：按年龄的阶段算入学学年，「接」的阶段接上一阶段；检查重叠 */
+  function entryYear(k, age, cutoff) {
+    const ok = k.m < cutoff.m || (k.m === cutoff.m && k.d <= cutoff.d);
+    return k.y + age + (ok ? 0 : 1);
+  }
+  function monthsBetween(y1, m1, d1, y2, m2, d2) { return (y2 - y1) * 12 + (m2 - m1) - (d2 < d1 ? 1 : 0); }
+  function path(P, k) {
+    const out = [];
+    let prevEnd = null;
+    P.stages.forEach((s, i) => {
+      const from = s.age == null ? prevEnd : entryYear(k, s.age, P.cutoff) + k.delay;
+      if (prevEnd != null && from < prevEnd) throw Bad(k.name + ' 的「' + s.name + '」' + from + ' 学年就该入学，但「' + P.stages[i - 1].name + '」要读到 ' + (prevEnd - 1) + ' 学年，两段重叠了；把「' + s.name + '」的入学年龄改大或改成「接」', 'stages');
+      const gap = prevEnd == null ? 0 : from - prevEnd;
+      const ageM = monthsBetween(k.y, k.m, k.d, from, P.start.m, P.start.d);
+      if (ageM < 0) throw Bad(k.name + ' 在「' + s.name + '」开学时还没出生，把入学年龄改大', 'stages');
+      out.push({ si: i, stage: s.name, from, to: from + s.years, ageM, gap, fee: s.fee });
+      prevEnd = from + s.years;
+    });
+    return out;
+  }
+  /* 同届位置（按龄入学，不含缓读）：出生日落在 (上一年截止日, 今年截止日] 的同届 */
+  function cohort(P, k) {
+    const c = P.cutoff;
+    const ok = k.m < c.m || (k.m === c.m && k.d <= c.d);
+    const endY = ok ? k.y : k.y + 1; /* 这个孩子所在出生窗口的截止年 */
+    const end = dayNo(endY, c.m, c.d), startD = dayNo(endY - 1, c.m, c.d) + 1, b = dayNo(k.y, k.m, k.d);
+    const sameYearCut = dayNo(k.y, c.m, c.d);
+    return {
+      windowFrom: (function () { const t = new Date((startD) * 86400000); return ymd(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate()); })(),
+      windowTo: ymd(endY, c.m, c.d),
+      daysToCut: end - b,                   /* 比同届最小的早出生几天（0 = 就是截止日当天） */
+      daysFromStart: b - startD, len: end - startD + 1,            /* 比同届最大的晚出生几天 */
+      monthsOlderThanYoungest: monthsBetween(k.y, k.m, k.d, endY, c.m, c.d),
+      monthsYoungerThanOldest: (function () { const t = new Date(startD * 86400000); return monthsBetween(t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate(), k.y, k.m, k.d); })(),
+      before: ok, daysBefore: ok ? sameYearCut - b : null, daysAfter: ok ? null : b - sameYearCut,
+    };
+  }
+  function grade(p, y) { return p.find((x) => y >= x.from && y < x.to) || null; }
+  function hasAgeAtFirst(P) { return P.stages[0].age; }
+
+  function calculate(inp) {
+    const P = parse(inp);
+    const kids = P.kids.map((k) => ({ k, path: path(P, k), co: cohort(P, k) }));
+    const y0 = Math.min(...kids.map((x) => x.path[0].from)), y1 = Math.max(...kids.map((x) => x.path[x.path.length - 1].to)) - 1;
+    if (y1 - y0 + 1 > MAX_SPAN) throw Bad('从第一个孩子入学到最后一个孩子读完跨了 ' + (y1 - y0 + 1) + ' 个学年，超过 ' + MAX_SPAN + ' 个，表太长了；减少孩子或阶段', 'kids');
+    const years = [];
+    for (let y = y0; y <= y1; y++) {
+      const cells = kids.map((x) => {
+        const g = grade(x.path, y);
+        if (!g) return null;
+        return { stage: g.stage, si: g.si, n: y - g.from + 1, of: g.to - g.from, fee: g.fee, starts: y === g.from };
+      });
+      const total = cells.reduce((s, c) => s + (c ? c.fee : 0), 0);
+      const paying = cells.filter((c) => c && c.fee > 0).length;
+      const starting = cells.map((c, i) => (c && c.starts ? i : -1)).filter((i) => i >= 0);
+      years.push({ y, cells, total, paying, starting });
+    }
+    const totalAll = years.reduce((s, r) => s + r.total, 0);
+    const peak = years.reduce((b, r) => (r.total > b.total ? r : b), years[0]);
+    const peakYears = years.filter((r) => r.total === peak.total).map((r) => r.y);
+    const multi = years.filter((r) => r.paying >= 2);
+    const clash = years.filter((r) => r.starting.length >= 2);
+    const perKid = kids.map((x) => x.path.reduce((s, g) => s + g.fee * (g.to - g.from), 0));
+    const R = { P, kids, years, y0, y1, totalAll, peak, peakYears, multi, clash, perKid };
+    R.summary = summary(R);
+    R.facts = facts(R);
+    return R;
+  }
+  function ranges(ys) {
+    const out = []; let a = null, b = null;
+    ys.forEach((y) => { if (a == null) { a = b = y; } else if (y === b + 1) b = y; else { out.push([a, b]); a = b = y; } });
+    if (a != null) out.push([a, b]);
+    return out;
+  }
+  const rangeTxt = (ys) => ranges(ys).map(([a, b]) => (a === b ? a : a + '–' + b)).join('、');
+  function ageTxt(m) { const y = Math.floor(m / 12), r = m % 12; return y + ' 岁' + (r ? ' ' + r + ' 个月' : ''); }
+  function stageAt(x, name) { return x.path.find((g) => g.stage === name); }
+  function keyStage(P) { /* 说话用的主阶段：第一个按年龄入学、名字含「小学」的，没有就第一个按年龄入学的 */
+    return P.stages.find((s) => s.age != null && /小学/.test(s.name)) || P.stages.find((s) => s.age != null);
+  }
+  const peakTxt = (R) => R.peakYears.length === 1 ? R.peak.y + ' 学年' : rangeTxt(R.peakYears) + ' 这 ' + R.peakYears.length + ' 个学年，每年';
+  function summary(R) {
+    const P = R.P, ks = keyStage(P);
+    const parts = R.kids.map((x) => { const g = stageAt(x, ks.name); return x.k.name + ' ' + g.from + ' 年秋上' + ks.name; });
+    let s = parts.join('，') + '。';
+    if (R.kids.length > 1) {
+      if (R.peak.total > 0) s += '最贵是 ' + peakTxt(R) + ' ' + yuan(R.peak.total) + (R.multi.length ? '，有 ' + R.multi.length + ' 个学年要同时交两份及以上' : '') + '。';
+      if (R.clash.length) s += R.clash.length + ' 个学年里有两个孩子同年升学。';
+    } else if (R.peak.total > 0) s += '最贵是 ' + peakTxt(R) + ' ' + yuan(R.peak.total) + '。';
+    return s;
+  }
+  function facts(R) {
+    const P = R.P, ks = keyStage(P), out = [];
+    R.kids.forEach((x) => {
+      const g = stageAt(x, ks.name), c = x.co, k = x.k;
+      let t = k.name + '（' + ymd(k.y, k.m, k.d) + '）：' + ks.name + ' ' + g.from + ' 年 ' + P.start.m + ' 月入学，那时 ' + ageTxt(g.ageM);
+      if (c.before) t += (c.daysBefore ? '；截止日前 ' + c.daysBefore + ' 天出生' : '；正好截止日当天出生') + '，刚好赶上这一届' + (c.monthsYoungerThanOldest ? '，同届最大的比他大 ' + c.monthsYoungerThanOldest + ' 个月' : '，是同届最大的那批');
+      else t += '；截止日后 ' + c.daysAfter + ' 天出生，要等下一届，在那一届里算大的' + (c.monthsOlderThanYoungest ? '，同届最小的比他小 ' + c.monthsOlderThanYoungest + ' 个月' : '');
+      if (k.delay) t += '（另外按你写的缓读 ' + k.delay + ' 年）';
+      const last = x.path[x.path.length - 1];
+      t += '；读完「' + last.stage + '」是 ' + (last.to) + ' 年夏天';
+      out.push(t);
+    });
+    if (R.kids.length > 1) {
+      if (R.multi.length) out.push('同时交两份及以上的学年：' + rangeTxt(R.multi.map((r) => r.y)) + '，共 ' + R.multi.length + ' 个');
+      else out.push('没有哪个学年要同时给两个孩子交钱');
+      R.clash.forEach((r) => out.push(r.y + ' 学年两个孩子同年升学：' + r.starting.map((i) => R.kids[i].k.name + '上' + r.cells[i].stage).join('、')));
+    }
+    R.kids.forEach((x, i) => x.path.forEach((g) => { if (g.gap > 0) out.push(x.k.name + ' 在「' + g.stage + '」之前空了 ' + g.gap + ' 个学年（上一阶段读完还不到入学年龄）'); }));
+    if (R.totalAll > 0) out.push('按你填的每年费用，全部加起来 ' + yuan(R.totalAll) + (R.kids.length > 1 ? '（' + R.kids.map((x, i) => x.k.name + ' ' + yuan(R.perKid[i])).join('，') + '）' : ''));
+    return out;
+  }
+
+  /* 建议：每个孩子缓读一年 / 不读第一个阶段；只列确实改变结果的 */
+  function setDelay(inp, idx, nd) {
+    const lines = inp.kids.split('\n'); let n = -1;
+    const out = lines.map((l) => {
+      const t = tidy(l); if (!t || /^(名字|孩子|姓名)(\s|$)/.test(t)) return l;
+      n++; if (n !== idx) return l;
+      const p = t.split(' '); return p[0] + ' ' + p[1] + (nd ? ' ' + nd : '');
+    });
+    return Object.assign({}, inp, { kids: out.join('\n') });
+  }
+  function suggestions(inp, R) {
+    const out = [];
+    if (R.kids.length > 1) {
+      R.kids.forEach((x, i) => {
+        if (x.k.delay >= 3) return;
+        const apply = setDelay(inp, i, x.k.delay + 1);
+        let R2; try { R2 = calculate(apply); } catch (e) { return; }
+        const dPeak = R2.peak.total - R.peak.total, dClash = R2.clash.length - R.clash.length, dMulti = R2.multi.length - R.multi.length;
+        if (!dPeak && !dClash && !dMulti) return;
+        const bits = [];
+        if (dPeak) bits.push('最贵学年 ' + yuan(R.peak.total) + ' → ' + yuan(R2.peak.total));
+        if (dMulti) bits.push('同时交两份的学年 ' + R.multi.length + ' → ' + R2.multi.length + ' 个');
+        if (dClash) bits.push('同年升学 ' + R.clash.length + ' → ' + R2.clash.length + ' 次');
+        out.push({ id: 'delay' + i, text: '如果 ' + x.k.name + ' 晚一年入学：' + bits.join('，') + '；所有阶段都往后推一年', apply, R2 });
+      });
+    }
+    const P = R.P;
+    if (P.stages.length > 1 && P.stages[0].fee > 0 && P.stages[1].age != null) {
+      const lines = inp.stages.split('\n'); let n = -1; const first = P.stages[0].name;
+      const apply = Object.assign({}, inp, { stages: lines.filter((l) => { const t = tidy(l); if (!t || /^阶段(\s|$)/.test(t)) return true; n++; return n !== 0; }).join('\n') });
+      let R2 = null; try { R2 = calculate(apply); } catch (e) { R2 = null; }
+      if (R2) out.push({ id: 'dropFirst', text: '如果都不读「' + first + '」：总共少花 ' + yuan(R.totalAll - R2.totalAll) + '，最贵学年 ' + yuan(R.peak.total) + ' → ' + yuan(R2.peak.total), apply, R2 });
+    }
+    return out.slice(0, 5);
+  }
+
+  const cellTxt = (c) => (c ? c.stage + (c.of > 1 ? ' ' + c.n + '/' + c.of : '') : '');
+  function csvEsc(s) { s = String(s); return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; }
+  function toCSV(R, stamp) {
+    const L = ['入学年份表 生成时间 ' + stamp];
+    L.push(['学年'].concat(R.kids.map((x) => x.k.name), R.kids.map((x) => x.k.name + ' 费用'), ['这一学年合计', '同时交钱人数', '同年升学']).map(csvEsc).join(','));
+    R.years.forEach((r) => L.push([r.y + '学年'].concat(r.cells.map(cellTxt), r.cells.map((c) => (c ? c.fee : 0)), [r.total, r.paying, r.starting.length >= 2 ? r.starting.map((i) => R.kids[i].k.name).join('+') : '']).map(csvEsc).join(',')));
+    return L.join('\n') + '\n';
+  }
+  function toMD(R, stamp, sg) {
+    const L = ['# 入学年份表', '', '生成时间：' + stamp + '　截止日 ' + pad(R.P.cutoff.m) + '-' + pad(R.P.cutoff.d) + '（含当天），开学 ' + pad(R.P.start.m) + '-' + pad(R.P.start.d), '', '**' + R.summary + '**', ''];
+    R.facts.forEach((f) => L.push('- ' + f));
+    L.push('', '## 每个孩子的阶段', '');
+    R.kids.forEach((x) => { L.push('### ' + x.k.name, ''); x.path.forEach((g) => L.push('- ' + g.stage + '：' + g.from + '–' + (g.to - 1) + ' 学年，入学时 ' + ageTxt(g.ageM) + (g.fee ? '，每年 ' + yuan(g.fee) : ''))); L.push(''); });
+    L.push('## 逐学年', '', '| 学年 | ' + R.kids.map((x) => x.k.name).join(' | ') + ' | 合计 |', '|' + '---|'.repeat(R.kids.length + 2));
+    R.years.forEach((r) => L.push('| ' + r.y + ' | ' + r.cells.map(cellTxt).join(' | ') + ' | ' + money(r.total) + ' |'));
+    if (sg && sg.length) { L.push('', '## 改一个条件', ''); sg.forEach((s) => L.push('- ' + s.text)); }
+    L.push('', '入学年龄截止日和阶段是你自己填的，不代表任何地区的政策，以当地教育部门公布为准。默认例子是虚构的。');
+    return L.join('\n') + '\n';
+  }
+
+  const DEFAULT = {
+    kids: '老大 2024-08-20\n老二 2026-09-03',
+    cutoff: '08-31', start: '09-01',
+    stages: '阶段 入学年龄 读几年 每年费用\n托班 2 1 30000\n幼儿园 3 3 24000\n小学 6 6 3000\n初中 接 3 4000\n高中 接 3 8000\n大学 接 4 20000',
+  };
+  const PRESETS = [
+    ['默认：两个孩子', DEFAULT],
+    ['一个孩子，生在截止日第二天', { kids: '小满 2025-09-01', cutoff: '08-31', start: '09-01', stages: DEFAULT.stages }],
+    ['截止日改成 12-31（假设）', Object.assign({}, DEFAULT, { cutoff: '12-31' })],
+    ['三个孩子', { kids: '老大 2021-03-15\n老二 2023-08-31\n老三 2025-11-02', cutoff: '08-31', start: '09-01', stages: DEFAULT.stages }],
+    ['不读托班，幼儿园 4 岁才上', { kids: DEFAULT.kids, cutoff: '08-31', start: '09-01', stages: '幼儿园 4 2 24000\n小学 6 6 3000\n初中 接 3 4000' }],
+  ];
+  const api = { peakTxt, DEFAULT, PRESETS, KEYS, parse, path, cohort, entryYear, calculate, suggestions, setDelay, toCSV, toMD, ranges, rangeTxt, ageTxt, cellTxt, keyStage, yuan, money, ymd, pad, monthsBetween, dayNo };
+  if (typeof module === 'object' && module.exports) module.exports = api; else root.AppCore = api;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+  </script>
+  <script>
+/* 入学年份表 · 界面层 */
+(function () {
+  'use strict';
+  const C = window.AppCore;
+  const KEY = 'school-years:v1';
+  const NAME = '入学年份表';
+  const copy = (o) => JSON.parse(JSON.stringify(o));
+  const DEFAULT = C.DEFAULT, PRESETS = C.PRESETS, KEYS = C.KEYS;
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const COL = ['#f3d9b1', '#d9e7c4', '#c9dcea', '#e7cfe0', '#f0c9b8', '#d6d1ea', '#cfe6df', '#ead9c0', '#dcdcdc', '#f2e2a8'];
+  let state = copy(DEFAULT);
+  let last = null;
+
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* 隐私模式忽略 */ } }
+  function load() {
+    try {
+      const o = JSON.parse(localStorage.getItem(KEY) || 'null');
+      if (!o || typeof o !== 'object' || Array.isArray(o)) return null;
+      const s = {};
+      for (const k of KEYS) { if (o[k] == null || typeof o[k] === 'object') return null; s[k] = String(o[k]).slice(0, 500); }
+      return s;
+    } catch (e) { return null; }
+  }
+  function fill() { KEYS.forEach((k) => { $(k).value = state[k]; }); }
+
+  function renderWins(R) {
+    $('wins').innerHTML = R.kids.map((x) => {
+      const c = x.co, pos = Math.max(0, Math.min(100, c.daysFromStart / Math.max(1, c.len - 1) * 100));
+      return '<div class="win"><div class="who"><b>' + esc(x.k.name) + '</b>：这一届生日从 ' + c.windowFrom + ' 到 ' + c.windowTo + '，' + esc(x.k.name) + ' 排在第 ' + (c.daysFromStart + 1) + ' 天（共 ' + c.len + ' 天）</div>' +
+        '<div class="bar"><span class="pin" style="left:calc(' + pos.toFixed(1) + '% - 1px)"></span></div>' +
+        '<div class="cap"><span>← 这一届最大</span><span>最小 →</span></div></div>';
+    }).join('');
+  }
+  function renderTable(R) {
+    const P = R.P;
+    let h = '<thead><tr><th>学年</th>' + R.kids.map((x) => '<th title="' + esc(x.k.name) + '">' + esc(x.k.name) + '</th>').join('') + '<th style="text-align:right">这一学年合计</th></tr></thead><tbody>';
+    R.years.forEach((r) => {
+      const cls = [r.total === R.peak.total && r.total > 0 ? 'peak' : '', r.starting.length >= 2 ? 'clash' : '', r.paying >= 2 ? 'multi' : ''].filter(Boolean).join(' ');
+      h += '<tr class="' + cls + '" data-y="' + r.y + '"><td class="y">' + r.y + '</td>' + r.cells.map((c) => c ? '<td class="c' + (c.starts ? ' st' : '') + '" style="background:' + COL[c.si % COL.length] + '">' + esc(C.cellTxt(c)) + '</td>' : '<td class="c"></td>').join('') + '<td class="tot">' + C.money(r.total) + '</td></tr>';
+    });
+    $('yt').innerHTML = h + '</tbody>';
+    $('legend').innerHTML = P.stages.map((s, i) => '<span><i style="background:' + COL[i % COL.length] + '"></i>' + esc(s.name) + '</span>').join('') +
+      '<span>左边黑线加粗 = 这一年入学</span><span style="color:#a3321f">⚑ = 两个孩子同年升学</span><span><i style="background:#fbeee4"></i>同时交两份及以上</span><span style="color:#a3321f;font-weight:600">红字合计 = 最贵的学年</span>';
+  }
+  function sugList(sg) {
+    const box = $('sugs'); box.innerHTML = '';
+    sg.forEach((x) => {
+      const d = document.createElement('div'); d.className = 'sug';
+      d.innerHTML = '<span>' + esc(x.text) + '</span>';
+      const bt = document.createElement('button'); bt.textContent = '照这样算'; bt.dataset.sug = x.id;
+      bt.addEventListener('click', () => { state = copy(x.apply); fill(); run(); });
+      d.appendChild(bt); box.appendChild(d);
+    });
+    $('sugCard').style.display = sg.length ? '' : 'none';
+  }
+  function run() {
+    [].forEach.call(document.querySelectorAll('.bad'), (e) => e.classList.remove('bad'));
+    try {
+      const R = C.calculate(state);
+      const sg = C.suggestions(state, R);
+      $('error').style.display = 'none'; $('out').style.display = ''; $('out2').style.display = '';
+      $('summary').textContent = R.summary;
+      $('facts').innerHTML = R.facts.map((f) => '<li>' + esc(f) + '</li>').join('');
+      last = { r: R, sg };
+      renderWins(R); renderTable(R); sugList(sg);
+    } catch (e) {
+      last = null;
+      if (e.field) { const el = $(e.field); if (el) el.classList.add('bad'); }
+      $('error').textContent = '算不了：' + e.message; $('error').style.display = 'block';
+      $('out').style.display = 'none'; $('out2').style.display = 'none';
+    }
+    save();
+  }
+
+  /* ── 导出 ── */
+  function stamp() { const d = new Date(), z = (n) => String(n).padStart(2, '0'); return d.getFullYear() + '-' + z(d.getMonth() + 1) + '-' + z(d.getDate()) + ' ' + z(d.getHours()) + ':' + z(d.getMinutes()); }
+  function download(name, blob) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000); }
+  function wrap(g, t, w) {
+    const NOHEAD = '，。、；：！？）」』%·→｜';
+    const out = []; let line = [];
+    const toks = String(t).match(/[0-9][0-9,.%–]*(\s?(元|个月|岁|天|学年|年|个|次))?|[A-Za-z_][A-Za-z0-9_.\-/]*|[\s\S]/g) || [];
+    const width = (a) => g.measureText(a.join('')).width;
+    for (const tk of toks) {
+      if (line.length && width(line.concat([tk])) > w) {
+        let carry = [tk];
+        while (line.length > 1 && (NOHEAD.indexOf(carry[0][0]) >= 0 || '（「『'.indexOf(line[line.length - 1]) >= 0)) carry.unshift(line.pop());
+        out.push(line.join(''));
+        line = carry; if (/^\s+$/.test(line[0])) line.shift();
+      } else line.push(tk);
+    }
+    if (line.length) out.push(line.join('')); return out;
+  }
+  function fitText(g, t, w) { let s = String(t); if (g.measureText(s).width <= w) return s; while (s.length > 1 && g.measureText(s + '…').width > w) s = s.slice(0, -1); return s + '…'; }
+  function drawPNG(Lx) {
+    const R = Lx.r, P = R.P;
+    const Wd = 1080, H = 1350, X = 64, TW = 952;
+    const cv = document.createElement('canvas'); cv.width = Wd; cv.height = H;
+    const g = cv.getContext('2d'), FF = '"PingFang SC","Microsoft YaHei",sans-serif';
+    g.fillStyle = '#f4f1ea'; g.fillRect(0, 0, Wd, H);
+    g.fillStyle = '#fffdf8'; g.fillRect(32, 32, Wd - 64, H - 64);
+    g.fillStyle = '#776e62'; g.font = '24px ' + FF;
+    g.fillText(fitText(g, NAME + ' · 截止日 ' + C.pad(P.cutoff.m) + '-' + C.pad(P.cutoff.d) + ' · ' + R.kids.length + ' 个孩子', TW), X, 92);
+    g.fillStyle = '#2a2622'; g.font = 'bold 30px ' + FF;
+    let y = 142, lh = 42, sl = wrap(g, R.summary, TW);
+    if (sl.length > 4) { g.font = 'bold 24px ' + FF; lh = 34; sl = wrap(g, R.summary, TW); }
+    if (sl.length > 5) { sl = sl.slice(0, 5); sl[4] = fitText(g, sl[4] + '……', TW - 10); if (!/…$/.test(sl[4])) sl[4] += '…'; }
+    sl.forEach((l) => { g.fillText(l, X, y); y += lh; });
+    y += 10;
+    /* 年表：横轴学年、每个孩子一条色带 */
+    const n = R.years.length, lw = 150, cw = Math.max(8, Math.floor((TW - lw) / n)), bh = Math.min(72, Math.floor(330 / Math.max(1, R.kids.length)) - 10);
+    const gx = X + lw;
+    g.font = '15px ' + FF; g.fillStyle = '#877e72';
+    const every = n > 40 ? 10 : n > 20 ? 5 : n > 10 ? 2 : 1;
+    R.years.forEach((r, i) => { if ((r.y % every) === 0 || i === 0) { g.fillText(String(r.y), gx + i * cw, y + 14); g.fillRect(gx + i * cw, y + 20, 1, 6); } });
+    y += 34;
+    R.kids.forEach((x, ki) => {
+      g.fillStyle = '#2a2622'; g.font = 'bold 21px ' + FF; g.fillText(fitText(g, x.k.name, lw - 14), X, y + bh / 2 + 8);
+      R.years.forEach((r, i) => {
+        const c = r.cells[ki]; if (!c) return;
+        g.fillStyle = COL[c.si % COL.length]; g.fillRect(gx + i * cw, y, cw, bh);
+        if (c.starts) { g.fillStyle = '#2a2622'; g.fillRect(gx + i * cw, y, 3, bh); }
+      });
+      /* 阶段名写在色块中间（放得下才写） */
+      x.path.forEach((p) => {
+        const i0 = R.years.findIndex((r) => r.y === p.from), wpx = (p.to - p.from) * cw;
+        g.font = '15px ' + FF; g.fillStyle = '#2a2622';
+        if (g.measureText(p.stage).width + 8 <= wpx) g.fillText(p.stage, gx + i0 * cw + 6, y + bh / 2 + 6);
+      });
+      y += bh + 10;
+    });
+    /* 图例：一年的阶段色块太窄写不下名字，靠图例认 */
+    { let lx = gx; g.font = '16px ' + FF;
+      const items = P.stages.map((s, i) => [COL[i % COL.length], s.name]).concat(R.clash.length ? [['flag', '⚑ 两个孩子同年升学']] : []);
+      items.forEach(([c, t]) => { const w = (c === 'flag' ? 0 : 20) + g.measureText(t).width + 18; if (lx + w > X + TW) { lx = gx; y += 26; }
+        if (c !== 'flag') { g.fillStyle = c; g.fillRect(lx, y + 2, 14, 14); g.fillStyle = '#2a2622'; g.fillText(t, lx + 20, y + 15); } else { g.fillStyle = '#a3321f'; g.fillText(t, lx, y + 15); }
+        lx += w; });
+      y += 40; }
+    /* 合计柱 */
+    const maxT = Math.max(1, R.peak.total), ch = 170;
+    g.fillStyle = '#2a2622'; g.font = 'bold 19px ' + FF; g.fillText('每学年合计', X, y + ch / 2 + 6);
+    R.years.forEach((r, i) => {
+      const hh = Math.round(r.total / maxT * (ch - 24));
+      g.fillStyle = r.total === R.peak.total && r.total > 0 ? '#a3321f' : r.paying >= 2 ? '#d29a6a' : '#c9bfae';
+      g.fillRect(gx + i * cw + 1, y + ch - hh, Math.max(2, cw - 2), hh);
+    });
+    R.clash.forEach((r) => { const i = R.years.indexOf(r); g.fillStyle = '#a3321f'; g.font = 'bold 15px ' + FF; g.fillText('⚑', gx + i * cw + Math.max(0, cw / 2 - 6), y + ch + 18); });
+    if (R.peak.total > 0) {
+      const i = R.years.findIndex((r) => r.y === R.peak.y);
+      g.fillStyle = '#a3321f'; g.font = 'bold 17px ' + FF;
+      const lab = R.peak.y + ' · ' + C.money(R.peak.total), lwid = g.measureText(lab).width;
+      g.fillText(lab, Math.min(gx + i * cw, X + TW - lwid), y + 18);
+    }
+    y += ch + (R.clash.length ? 54 : 40);
+    g.font = '20px ' + FF; g.fillStyle = '#2a2622';
+    const items = R.facts.concat(R.kids.map((x) => x.k.name + ' 的阶段：' + x.path.map((q) => q.stage + ' ' + (q.to - q.from > 1 ? q.from + '–' + (q.to - 1) : q.from)).join(' · ')), Lx.sg.map((q) => '改一个条件：' + q.text));
+    let shown = 0;
+    for (const f of items) {
+      const ls = wrap(g, '· ' + f, TW);
+      if (y + (ls.length - 1) * 29 > H - 140) break;
+      ls.forEach((l) => { g.fillText(l, X, y); y += 29; }); y += 6; shown++;
+    }
+    if (shown < items.length) { g.fillStyle = '#877e72'; g.font = '18px ' + FF; g.fillText('…… 还有 ' + (items.length - shown) + ' 条写不下，见页面或 Markdown 导出', X, Math.min(y, H - 118)); }
+    g.fillStyle = '#877e72'; g.font = '18px ' + FF;
+    wrap(g, '截止日和各阶段入学年龄是自己填的，不代表任何地区的政策；费用按填的数，不含涨价。默认例子是虚构的。', TW).forEach((l, i) => g.fillText(l, X, H - 90 + i * 27));
+    return Promise.resolve(cv);
+  }
+  function backup() {
+    const R = last.r;
+    return { app: NAME, version: 1, savedAt: stamp(), input: copy(state), result: { summary: R.summary,
+      kids: R.kids.map((x, i) => ({ name: x.k.name, birth: C.ymd(x.k.y, x.k.m, x.k.d), delay: x.k.delay, total: R.perKid[i],
+        cohort: { from: x.co.windowFrom, to: x.co.windowTo, dayInCohort: x.co.daysFromStart + 1, days: x.co.len },
+        stages: x.path.map((p) => ({ stage: p.stage, fromYear: p.from, lastYear: p.to - 1, ageMonthsAtEntry: p.ageM, feePerYear: p.fee })) })),
+      peak: { year: R.peak.y, years: R.peakYears, total: R.peak.total }, multiPayYears: R.multi.map((r) => r.y), sameYearEntries: R.clash.map((r) => r.y), totalAll: R.totalAll,
+      years: R.years.map((r) => ({ year: r.y, cells: r.cells.map(C.cellTxt), total: r.total })) } };
+  }
+  function init() {
+    KEYS.forEach((k) => $(k).addEventListener('input', () => { state[k] = $(k).value; run(); }));
+    PRESETS.forEach((p) => {
+      const b = document.createElement('button'); b.className = 'ghost'; b.textContent = p[0];
+      b.addEventListener('click', () => { state = copy(p[1]); fill(); run(); });
+      $('presets').appendChild(b);
+    });
+    $('reset').addEventListener('click', () => { state = copy(DEFAULT); fill(); run(); });
+    $('dlCSV').addEventListener('click', () => { if (last) download(NAME + '.csv', new Blob(['\ufeff' + C.toCSV(last.r, stamp())], { type: 'text/csv;charset=utf-8' })); });
+    $('dlMD').addEventListener('click', () => { if (last) download(NAME + '.md', new Blob([C.toMD(last.r, stamp(), last.sg)], { type: 'text/markdown;charset=utf-8' })); });
+    $('dlJSON').addEventListener('click', () => { if (last) download(NAME + '-备份.json', new Blob([JSON.stringify(backup(), null, 2)], { type: 'application/json' })); });
+    $('dlPNG').addEventListener('click', () => { if (last) drawPNG(last).then((cv) => cv.toBlob((b) => download(NAME + '-1080x1350.png', b), 'image/png')); });
+    state = load() || copy(DEFAULT);
+    fill(); run();
+    window.__ex = { last: () => last, state: () => state, presets: PRESETS, DEFAULT, drawPNG, backup };
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+})();
+
+  </script>
+</body>
+</html>
